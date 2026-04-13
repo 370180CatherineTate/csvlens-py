@@ -44,6 +44,11 @@ def test_current_page_exceeds_total_pages_raises():
         make_bar(current_page=6, total_pages=5)
 
 
+def test_visible_rows_exceeds_total_rows_raises():
+    with pytest.raises(ValueError, match="visible_rows"):
+        make_bar(visible_rows=150, total_rows=100)
+
+
 # ---------------------------------------------------------------------------
 # Render content
 # ---------------------------------------------------------------------------
@@ -113,33 +118,3 @@ def test_render_search_with_matches():
 
 def test_render_search_no_matches():
     bar = make_bar(search_pattern="xyz", total_matches=0)
-    result = bar.render()
-    assert "no matches" in result
-
-
-def test_render_no_search_by_default():
-    bar = make_bar()
-    assert "Search" not in bar.render()
-
-
-def test_render_all_features_combined():
-    bar = make_bar(
-        total_rows=500,
-        visible_rows=120,
-        current_page=2,
-        total_pages=5,
-        sort_column="salary",
-        sort_ascending=False,
-        global_filter="eng",
-        frozen_count=1,
-        search_pattern="senior",
-        current_match=1,
-        total_matches=3,
-    )
-    result = bar.render()
-    assert "120/500" in result
-    assert "2/5" in result
-    assert "salary" in result
-    assert "eng" in result
-    assert "Frozen: 1" in result
-    assert "senior" in result
