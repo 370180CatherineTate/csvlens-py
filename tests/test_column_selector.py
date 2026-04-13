@@ -101,3 +101,16 @@ def test_filter_row_all_hidden(selector: ColumnSelector) -> None:
     selector.hide_all()
     row = {"name": "Bob", "age": "25", "city": "LA", "score": "80"}
     assert selector.filter_row(row) == {}
+
+
+def test_hide_already_hidden_raises(selector: ColumnSelector) -> None:
+    """Hiding an already-hidden column should raise a ValueError."""
+    selector.hide("age")
+    with pytest.raises(ValueError):
+        selector.hide("age")
+
+
+def test_show_already_visible_raises(selector: ColumnSelector) -> None:
+    """Showing an already-visible column should raise a ValueError."""
+    with pytest.raises(ValueError):
+        selector.show("name")
