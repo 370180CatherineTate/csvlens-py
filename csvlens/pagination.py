@@ -71,3 +71,30 @@ class Paginator:
 
     def is_last_page(self) -> bool:
         return self.total_pages == 0 or self._current_page == self.total_pages - 1
+
+    def page_info(self) -> dict:
+        """Return a summary dict of the current pagination state.
+
+        Returns:
+            A dict with keys: current_page, total_pages, total_rows,
+            page_size, start_row, and end_row (all 1-based for display).
+        """
+        if self.total_rows == 0:
+            return {
+                "current_page": 0,
+                "total_pages": 0,
+                "total_rows": 0,
+                "page_size": self._page_size,
+                "start_row": 0,
+                "end_row": 0,
+            }
+        start_row = self._current_page * self._page_size + 1
+        end_row = min(start_row + self._page_size - 1, self.total_rows)
+        return {
+            "current_page": self._current_page + 1,
+            "total_pages": self.total_pages,
+            "total_rows": self.total_rows,
+            "page_size": self._page_size,
+            "start_row": start_row,
+            "end_row": end_row,
+        }
