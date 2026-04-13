@@ -80,6 +80,18 @@ def test_find_matches_returns_correct_spans(engine):
     assert matches["name"] == [(1, 3)]
 
 
+def test_find_matches_in_row_multiple_occurrences(engine):
+    """Each occurrence of the pattern within a cell value should be reported."""
+    engine.set_pattern("a", case_sensitive=False)
+    row = {"name": "banana", "city": "Oslo"}
+    matches = dict(engine.find_matches_in_row(row))
+    # 'banana' contains 'a' at indices 1, 3, 5
+    assert "name" in matches
+    assert matches["name"] == [(1, 2), (3, 4), (5, 6)]
+    # 'Oslo' contains no 'a'
+    assert "city" not in matches
+
+
 def test_empty_pattern_after_set(engine):
     engine.set_pattern("")
     assert not engine.is_active()
