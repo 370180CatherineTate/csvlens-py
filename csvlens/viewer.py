@@ -1,19 +1,28 @@
-"""Viewer module: ties together CSVLoader, StatsReporter, and FilterEngine for CLI display."""
+"""High-level viewer that wires together loading, filtering, sorting,
+and pagination for the interactive TUI."""
 
-from typing import List, Optional, Dict
+from typing import List, Dict, Optional
+
 from csvlens.csv_loader import CSVLoader
-from csvlens.stats_reporter import StatsReporter
 from csvlens.filter_engine import FilterEngine
+from csvlens.sort_engine import SortEngine
+from csvlens.pagination import Paginator
 
 
 class Viewer:
-    """Coordinates loading, filtering, and reporting for a CSV file."""
+    """Facade that coordinates all data-access components."""
 
-    def __init__(self, filepath: str):
-        self._loader = CSVLoader(filepath)
-        self._reporter = StatsReporter(self._loader)
-        self._engine = FilterEngine(self._loader.headers)
-        self._filtered_rows: Optional[List[List[str]]] = None
+    def __init__(self, path: str, page_size: int = 25) -> None:
+        self._loader = CSVLoader(path)
+        self._filter = FilterEngine(self._loader.headers)
+        self._sorter = SortEngine(self._loader.headers)
+        self._page_size = page_size
+        self._paginator: Optional[Paginator] = None
+        self._rebuild()
+
+    # ------------------------------------------------------------------
+    # Properties
+    # ------------------------------------------------------------------
 
     @property
     def headers(self) -> List[str]:
@@ -21,45 +30,54 @@ class Viewer:
 
     @property
     def total_rows(self) -> int:
-        return self._loader.row_count
+        return self._paginator.total_rows  # type: ignore[union-attr]
 
-    def apply_filter(self, pattern: str, column: Optional[str] = None,
-                     case_sensitive: bool = False) -> None:
-        """Apply a global or column-scoped regex filter."""
-        if column:
-            self._engine.set_column_filter(column, pattern, case_sensitive)
-        else:
-            self._engine.set_global_filter(pattern, case_sensitive)
-        self._filtered_rows = None  # invalidate cache
+    # ------------------------------------------------------------------
+    # Filter helpers
+    # ------------------------------------------------------------------
+
+    def apply_filter(self, pattern: str) -> None:
+        """Apply a global regex filter and rebuild the paginator."""
+        self._filter.set_global_filter(pattern)
+        self._rebuild()
+
+    def apply_column_filter(self, column: str, pattern: str) -> None:
+        self._filter.set_column_filter(column, pattern)
+        self._rebuild()
 
     def clear_filters(self) -> None:
-        """Clear all active filters and reset the cached result."""
-        self._engine.clear_filters()
-        self._filtered_rows = None
+        self._filter.clear_filters()
+        self._rebuild()
 
-    def get_rows(self, limit: Optional[int] = None) -> List[List[str]]:
-        """Return filtered rows, optionally limited to `limit` rows."""
-        if self._filtered_rows is None:
-            all_rows = self._loader.rows
-            self._filtered_rows = self._engine.apply(all_rows)
-        if limit is not None:
-            return self._filtered_rows[:limit]
-        return self._filtered_rows
+    # ------------------------------------------------------------------
+    # Sort helpers
+    # ------------------------------------------------------------------
 
-    @property
-    def filtered_row_count(self) -> int:
-        return len(self.get_rows())
+    def apply_sort(self, column: str, ascending: bool = True) -> None:
+        """Sort visible rows by *column* and rebuild the paginator."""
+        self._sorter.set_sort(column, ascending)
+        self._rebuild()
 
-    def get_column_stats(self, column: str) -> Dict:
-        """Return statistics for a specific column."""
-        return self._reporter.get(column)
+    def clear_sort(self) -> None:
+        self._sorter.clear_sort()
+        self._rebuild()
 
-    def summary(self) -> Dict:
-        """Return a high-level summary of the current view state."""
-        return {
-            "file": self._loader.filepath,
-            "total_rows": self.total_rows,
-            "filtered_rows": self.filtered_row_count,
-            "columns": len(self.headers),
-            "active_filters": self._engine.active_filters,
-        }
+    # ------------------------------------------------------------------
+    # Page access
+    # ------------------------------------------------------------------
+
+    def get_page(self, page: int) -> List[Dict[str, str]]:
+        """Return rows for the requested 1-based page number."""
+        assert self._paginator is not None
+        return self._paginator.get_page(page)
+
+    # ------------------------------------------------------------------
+    # Internal
+    # ------------------------------------------------------------------
+
+    def _rebuild(self) -> None:
+        """Re-apply filter + sort and recreate the paginator."""
+        rows = self._loader.rows
+        rows = self._filter.apply(rows)
+        rows = self._sorter.sort(rows)
+        self._paginator = Paginator(rows, page_size=self._page_size)
