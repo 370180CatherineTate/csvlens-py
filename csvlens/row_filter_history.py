@@ -53,7 +53,14 @@ class RowFilterHistory:
         return self._cursor < len(self._stack) - 1
 
     def push(self, snapshot: FilterSnapshot) -> None:
-        """Record a new filter state, discarding any redo history."""
+        """Record a new filter state, discarding any redo history.
+
+        If the new snapshot is identical to the current one, it is not
+        recorded to avoid polluting the history with duplicate entries.
+        """
+        # Skip duplicate consecutive entries
+        if self.current == snapshot:
+            return
         # Truncate forward history
         self._stack = self._stack[: self._cursor + 1]
         self._stack.append(snapshot)
