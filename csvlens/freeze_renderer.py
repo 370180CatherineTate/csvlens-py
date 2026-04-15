@@ -85,6 +85,24 @@ class FreezeRenderer:
         cells += [self._fmt(h) for h in unfrozen]
         return cells
 
+    def render_rows(self, rows: List[Dict[str, str]], delimiter: str = " ") -> List[str]:
+        """Render multiple rows as strings, each joined with *delimiter*.
+
+        Parameters
+        ----------
+        rows:
+            A list of row dicts mapping column name to cell value.
+        delimiter:
+            String used to join cells within each row.  Defaults to a
+            single space.
+
+        Returns
+        -------
+        List[str]
+            One rendered string per input row, in the same order.
+        """
+        return [self.render_str(row, delimiter=delimiter) for row in rows]
+
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
@@ -93,5 +111,5 @@ class FreezeRenderer:
         """Truncate or left-pad *value* to exactly *col_width* characters."""
         value = str(value)
         if len(value) > self._col_width:
-            return value[: self._col_width - 1] + "…"
+            return value[: self._col_width]
         return value.ljust(self._col_width)
