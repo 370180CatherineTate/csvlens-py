@@ -63,6 +63,23 @@ class FreezeEngine:
         """Clear all frozen columns."""
         self._frozen.clear()
 
+    def toggle(self, column: str) -> bool:
+        """Toggle the frozen state of *column*.
+
+        Freezes the column if it is currently unfrozen, or unfreezes it
+        if it is currently frozen.
+
+        Returns:
+            True if the column is frozen after the call, False otherwise.
+        """
+        if column not in self._headers:
+            raise KeyError(f"Unknown column: {column!r}")
+        if column in self._frozen:
+            self._frozen.remove(column)
+            return False
+        self._frozen.append(column)
+        return True
+
     def is_frozen(self, column: str) -> bool:
         """Return True if *column* is currently frozen."""
         return column in self._frozen
