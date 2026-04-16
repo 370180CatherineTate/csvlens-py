@@ -82,6 +82,13 @@ def test_all_widths_returns_dict(profile):
     assert set(w.keys()) == {"name", "age", "city"}
 
 
+def test_all_widths_values_match_width_for(profile):
+    """all_widths() values should be consistent with individual width_for() calls."""
+    w = profile.all_widths()
+    for header in profile.headers:
+        assert w[header] == profile.width_for(header)
+
+
 def test_sample_size_limits_rows():
     rows = [
         {"val": "short"},
