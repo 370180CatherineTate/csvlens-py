@@ -32,6 +32,12 @@ class Viewer:
     def total_rows(self) -> int:
         return self._paginator.total_rows  # type: ignore[union-attr]
 
+    @property
+    def total_pages(self) -> int:
+        """Total number of pages given the current filter/sort state."""
+        assert self._paginator is not None
+        return self._paginator.total_pages
+
     # ------------------------------------------------------------------
     # Filter helpers
     # ------------------------------------------------------------------
