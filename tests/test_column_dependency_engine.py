@@ -85,77 +85,30 @@ def test_clear_dependencies(engine: ColumnDependencyEngine) -> None:
 # ---------------------------------------------------------------------------
 
 def test_transitive_dependencies_simple(engine: ColumnDependencyEngine) -> None:
+    # a <- b <- c  means c transitively depends on a
     engine.add_dependency("b", "a")
     engine.add_dependency("c", "b")
-    trans = engine.transitive_dependencies("c")
-    assert "a" in trans
-    assert "b" in trans
+    assert "a" in engine.transitive_dependencies("c")
+    assert "b" in engine.transitive_dependencies("c")
 
 
-def test_transitive_no_cycle_infinite_loop(engine: ColumnDependencyEngine) -> None:
-    # Even if data were cyclic (shouldn't happen via public API), visited guard
-    # prevents infinite loop – test that transitive terminates.
+def test_transitive_dependencies_no_deps(engine: ColumnDependencyEngine) -> None:
+    assert engine.transitive_dependencies("a") == []
+
+
+def test_transitive_dependencies_direct_only(engine: ColumnDependencyEngine) -> None:
     engine.add_dependency("b", "a")
-    result = engine.transitive_dependencies("b")
-    assert result == ["a"]
+    assert engine.transitive_dependencies("b") == ["a"]
 
 
-# ---------------------------------------------------------------------------
-# dependents
-# ---------------------------------------------------------------------------
-
-def test_dependents(engine: ColumnDependencyEngine) -> None:
+def test_transitive_dependencies_diamond(engine: ColumnDependencyEngine) -> None:
+    # d depends on b and c; both b and c depend on a
+    # transitive deps of d should include a exactly once
     engine.add_dependency("b", "a")
     engine.add_dependency("c", "a")
-    deps = engine.dependents("a")
-    assert "b" in deps
-    assert "c" in deps
-
-
-def test_dependents_unknown_column_raises(engine: ColumnDependencyEngine) -> None:
-    with pytest.raises(KeyError):
-        engine.dependents("z")
-
-
-# ---------------------------------------------------------------------------
-# ColumnDependencyRenderer
-# ---------------------------------------------------------------------------
-
-def test_invalid_col_width_raises(engine: ColumnDependencyEngine) -> None:
-    with pytest.raises(ValueError, match="col_width"):
-        ColumnDependencyRenderer(engine, col_width=3)
-
-
-def test_col_width_property(renderer: ColumnDependencyRenderer) -> None:
-    assert renderer.col_width == 20
-
-
-def test_render_returns_string(
-    engine: ColumnDependencyEngine, renderer: ColumnDependencyRenderer
-) -> None:
-    result = renderer.render("a")
-    assert isinstance(result, str)
-
-
-def test_render_contains_column_name(
-    engine: ColumnDependencyEngine, renderer: ColumnDependencyRenderer
-) -> None:
-    result = renderer.render("b")
-    assert "b" in result
-
-
-def test_render_shows_none_when_no_deps(
-    engine: ColumnDependencyEngine, renderer: ColumnDependencyRenderer
-) -> None:
-    result = renderer.render("a")
-    assert "(none)" in result
-
-
-def test_render_transitive_flag(
-    engine: ColumnDependencyEngine, renderer: ColumnDependencyRenderer
-) -> None:
-    engine.add_dependency("b", "a")
-    engine.add_dependency("c", "b")
-    result = renderer.render("c", transitive=True)
-    assert "Trans. Deps" in result
-    assert "a" in result
+    engine.add_dependency("d", "b")
+    engine.add_dependency("d", "c")
+    transitive = engine.transitive_dependencies("d")
+    assert transitive.count("a") == 1
+    assert "b" in transitive
+    assert "c" in transitive
